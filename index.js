@@ -9,8 +9,8 @@ async function main() {
 	// Load environment variable
 	const mnemonic = process.env.MNEMONIC;
 	const rpc = process.env.RPC;
-	const wallet_count = 5;
-	const amount_transfer = 100; // 0.5 usei
+	const wallet_count = 0;
+	const amount_transfer = 1000000; // 1 SIE = 1000000 usei
 
 	// Setup Main Wallet
 	const mainWallet = await signer.DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
