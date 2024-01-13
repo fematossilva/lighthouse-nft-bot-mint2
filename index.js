@@ -1,34 +1,45 @@
 const env = require("dotenv");
 const crypto = require("@cosmjs/crypto");
 const signer = require("@cosmjs/proto-signing");
-const cosmos_starget = require("@cosmjs/cosmwasm-stargate");
 const starget = require("@cosmjs/stargate");
-const sha3 = require("@noble/hashes/sha3");
-const bignumber = require("bignumber.js");
 
-// Read env var
 env.config();
 
-async function main(){
-	for(let i = 0; i < 1; i++) {
-		const wallet = await signer.DirectSecp256k1HdWallet.fromMnemonic(process.env.MNEMONIC, {
-			prefix: 'sei',
-			hdPaths: [crypto.stringToPath(`m/44'/118'/0'/0/${i}`)]
-		})
-		const [firstAccount] = await wallet.getAccounts();
-		
-		// Client setup
-		const client = await cosmos_starget.SigningCosmWasmClient.connectWithSigner(process.env.RPC, wallet, {
-			gasPrice: starget.GasPrice.fromString("0.3usei")
-		})
-		
-		// Mint param setup
-		let collection = process.env.COLLECTION
-		let group = null;
-		let lighthouseConfig = await client.queryContractSmart(process.env.LIGHTHOUST_CONTRACT, {get_config:{}})
-		let collectionConfig = await client.queryContractSmart(process.env.LIGHTHOUST_CONTRACT, {get_collection:{collection}})
-		console.log(collectionConfig)
+async function main() {
+	// Load environment variable
+	const mnemonic = process.env.MNEMONIC;
+	const rpc = process.env.RPC;
+	const wallet_count = 5;
+	const amount_transfer = 100; // 0.5 usei
+
+	// Setup Main Wallet
+	const mainWallet = await signer.DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+		prefix: "sei",
+	});
+	const [mainAcc] = await mainWallet.getAccounts();
+	const mainClient = await starget.SigningStargateClient.connectWithSigner(rpc, mainWallet, {
+		gasPrice: starget.GasPrice.fromString("0.1usei"),
+	});
+
+	// Setup Bot Wallet
+	for (let i = 1; i <= wallet_count; i++) {
+		let botWallet = await signer.DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+			prefix: "sei",
+			hdPaths: [crypto.stringToPath(`m/44'/118'/0'/0/${i}`)],
+		});
+		let [botAcc] = await botWallet.getAccounts();
+
+		// Use starget.coin method to create the amount
+		const amount = starget.coin(amount_transfer.toString(), "usei");
+
+		let sendTx = await mainClient.sendTokens(mainAcc.address, botAcc.address, [amount], "auto", "Transaction");
+		console.log("======================================")
+		console.info("Transfer To: ", botAcc.address);
+		console.info("Tx Hash    : ", sendTx.transactionHash);
+		console.log("======================================")
 	}
 }
 
-main()
+main().catch((error) => {
+	console.error("Error:", error);
+});
